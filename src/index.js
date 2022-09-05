@@ -105,14 +105,19 @@ server.post("/messages", async (req, res) => {
 
 server.get("/messages", async (req, res) => {
     const {limit} = req.query;
+    const user = req.headers.user;
+
+    if(!user) {
+        return res.sendStatus(422);
+    }
 
     try {
         const messages = await db.collection("messages").find().toArray();
-    
+        const userMessages = messages.filter((value) => value.from === user || value.to === user || value.type === "message" || value.type === "status");
         if(limit) {
-            return res.send(messages.slice(-limit));
+            return res.send(userMessages.slice(-limit));
         } else {
-            return res.send(messages);
+            return res.send(userMessages);
         }
 
     } catch (error) {
@@ -129,16 +134,39 @@ server.post("/status", async (req, res) => {
 
     try {
         const users = await db.collection("users").find().toArray();
-        const invalidName = users.find((value) => value.name === user);
+        const validName = users.find((value) => value.name === user);
+
+        if(validName) {
+            const update = await db.collection("users").updateOne({name: user}, {$set: {lastStatus: Date.now()}});
+            return res.sendStatus(200);
+        } else {
+            return res.sendStatus(404);
+        }
     } catch (error) {
-        
+        res.status(500).send(error);
     };
 
-})
+});
+
+setInterval( async () => {
+
+    try {
+        const users = await db.collection("users").find().toArray();
+        const usersOffline = users.filter((value) => ((Date.now() - value.lastStatus) > 10000));
+        const kickuser = usersOffline.forEach( async (value) => {
+            await db.collection("users").deleteOne({name: value.name});
+            await db.collection("messages").insertOne({
+                from: value.name,
+                to: "Todos",
+                text: 'sai da sala...',
+                type: "status",
+                time: dayjs().format("HH:mm:ss")
+            })
+        });
+    } catch (error) {
+        return error
+    }
+
+}, 15000);
 
 server.listen(5000, () => console.log("Listening on port 5000..."));
-
-/*res.send(participants.map((value) => value = {
-    ...value,
-    _id: undefined
-}));*/
