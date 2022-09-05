@@ -22,6 +22,12 @@ const userSchema = joi.object({
     name: joi.string().required().empty()
 });
 
+const messageSchema = joi.object({
+    to: joi.string().required().empty(),
+    text: joi.string().required().empty(),
+    type: joi.string().valid("private_message", "message").required()
+});
+
 server.post("/participants", async (req, res) => {
     const {name} = req.body;
     const validation = userSchema.validate({name});
@@ -39,8 +45,7 @@ server.post("/participants", async (req, res) => {
         }
 
     } catch (error) {
-        console.error(error);//o que botar aqui?
-        return res.sendStatus(500);
+        return res.status(500).send(error);
     }
 
     try {
@@ -57,19 +62,51 @@ server.post("/participants", async (req, res) => {
         });
         return res.sendStatus(201);
     } catch (error) {
-        console.error(error);//o que botar aqui?
-        return res.sendStatus(500);
+        return res.status(500).send(error);
     }
 });
 
 server.get("/participants", async (req, res) => {
     try {
-        const participants = await db.collection("users").find().toArray()
-        return res.send(participants);
+        const users = await db.collection("users").find().toArray()
+        return res.send(users);
     } catch (error) {
-        return res.sendStatus(500);
+        return res.status(500).send(error);
     }
-})
+});
+
+server.post("/messages", async (req, res) => {
+    const body = req.body;
+    const user = req.headers.user;
+    const validation = messageSchema.validate(body);
+
+    if (validation.error) {
+        return res.status(422).send({message: validation.error.details.map((value) => value.message)});
+    };
+
+    try {
+        const users = await db.collection("users").find().toArray()
+        const invalidName = users.find((value) => value.name === user)
+
+        if(!invalidName) {
+            return res.sendStatus(422);
+        }
+        const message = await db.collection("messages").insertOne({
+            ...body,
+            from: user,
+            time: dayjs().format("HH:mm:ss")
+        })
+        return res.sendStatus(201);
+    } catch (error) {
+        return res.status(500).send(error);
+    }
+      
+});
+
+server.get("/messages", async (req, res) => {
+    
+});
+
 server.listen(5000, () => console.log("Listening on port 5000..."));
 
 /*res.send(participants.map((value) => value = {
