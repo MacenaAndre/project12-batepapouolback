@@ -27,7 +27,7 @@ server.post("/participants", async (req, res) => {
     const validation = userSchema.validate({name});
 
     if (validation.error) {
-        return res.status(422)//.send({message: validation.error.details[0].message});
+        return res.status(422).send({message: validation.error.details.map((value) => value.message)});
       };
 
     try {
@@ -62,4 +62,17 @@ server.post("/participants", async (req, res) => {
     }
 });
 
+server.get("/participants", async (req, res) => {
+    try {
+        const participants = await db.collection("users").find().toArray()
+        return res.send(participants);
+    } catch (error) {
+        return res.sendStatus(500);
+    }
+})
 server.listen(5000, () => console.log("Listening on port 5000..."));
+
+/*res.send(participants.map((value) => value = {
+    ...value,
+    _id: undefined
+}));*/
