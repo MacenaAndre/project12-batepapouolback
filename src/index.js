@@ -37,8 +37,8 @@ server.post("/participants", async (req, res) => {
       };
 
     try {
-        const users = await db.collection("users").find().toArray()
-        const invalidName = users.find((value) => value.name === name)
+        const users = await db.collection("users").find().toArray();
+        const invalidName = users.find((value) => value.name === name);
 
         if(invalidName) {
             return res.sendStatus(409);
@@ -104,8 +104,37 @@ server.post("/messages", async (req, res) => {
 });
 
 server.get("/messages", async (req, res) => {
+    const {limit} = req.query;
+
+    try {
+        const messages = await db.collection("messages").find().toArray();
     
+        if(limit) {
+            return res.send(messages.slice(-limit));
+        } else {
+            return res.send(messages);
+        }
+
+    } catch (error) {
+        res.status(500).send(error);
+    }
 });
+
+server.post("/status", async (req, res) => {
+    const user = req.headers.user;
+
+    if(!user) {
+        return res.sendStatus(422);
+    };
+
+    try {
+        const users = await db.collection("users").find().toArray();
+        const invalidName = users.find((value) => value.name === user);
+    } catch (error) {
+        
+    };
+
+})
 
 server.listen(5000, () => console.log("Listening on port 5000..."));
 
